@@ -27,6 +27,7 @@
     "./skills/engineering/setup-matt-pocock-skills",
     "./skills/engineering/tdd",
     "./skills/engineering/to-spec",
+    "./skills/engineering/spec-to-userflow",
     "./skills/engineering/spec-to-tests",
     "./skills/engineering/to-tickets",
     "./skills/engineering/wayfinder",

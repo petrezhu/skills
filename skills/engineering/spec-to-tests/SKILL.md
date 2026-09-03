@@ -37,7 +37,7 @@ Run it in the project root. `Tests.md` lives at the project root.
 1. Read the spec and requirements. If they came from `to-spec`, the user stories are the raw material for Layer 1.
 2. Read the existing `Tests.md`, if there is one. Extend it, never replace it wholesale.
 3. Read the relevant code and code changes. Map requirements to what was actually built.
-4. Identify **user flows** (Layer 1): the paths a real user walks.
+4. Read `UserFlow.md` (the output of `spec-to-userflow`) and take Layer 1 from it. If it does not exist, derive the flows from the spec's user stories and note the gap in the report.
 5. Identify **modules and capabilities** (Layer 2): what the flows cannot reach.
 6. Generate the **failure matrix** (Layer 3): the conditions that actually fail users, picked by feature risk.
 7. Convert behaviors that state themselves naturally into BDD / Gherkin. Do not force the rest.
@@ -94,7 +94,9 @@ Do not invent a richer status system. PASS / FAIL / BLOCKED is the whole state m
 
 ## Layer 1: user flows
 
-Write the paths a user actually walks:
+Layer 1 converts the project's `UserFlow.md` into per-step test cases: each FLOW-NN becomes a test section, each step, branch, and failure path becomes a test. If `UserFlow.md` does not exist, derive the flows from the spec's user stories and note the gap.
+
+The paths a user actually walks:
 
 ```text
 enter the product
@@ -381,7 +383,7 @@ A feature is DONE only when:
 
 ## Relations to other skills
 
-- **Upstream:** `to-spec` produces the spec whose user stories become Layer 1. Run it before this skill.
+- **Upstream:** `to-spec` produces the spec whose user stories become Layer 1. `spec-to-userflow` produces `UserFlow.md`, which Layer 1 prefers over deriving flows itself. Tell the user to run `/spec-to-userflow` first when the spec exists but the map does not.
 - **Automation:** when mapping tests to code, Call the Skill tool with `tdd` to write the automated ones at pre-agreed seams.
 - **Failure analysis:** when a FAIL needs a root cause, Call the Skill tool with `diagnosing-bugs`.
 - **Acceptance:** after `implement` finishes, run Phase B here before `code-review` closes out the diff.

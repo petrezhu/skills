@@ -12,6 +12,7 @@ Reachable only when you type them (Claude Code: `disable-model-invocation: true`
 - **[improve-codebase-architecture](./improve-codebase-architecture/SKILL.md)**: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
 - **[setup-matt-pocock-skills](./setup-matt-pocock-skills/SKILL.md)**: Configure this repo for the engineering skills (issue tracker, triage labels, domain doc layout). Run once per repo.
 - **[to-spec](./to-spec/SKILL.md)**: Turn the current conversation into a spec and publish it to the issue tracker.
+- **[spec-to-userflow](./spec-to-userflow/SKILL.md)**: Turn a spec's user stories into the project's `UserFlow.md`: every journey a user can walk, its screens and functional states, branches and failure paths, exit points, risk grades, and story traceability.
 - **[spec-to-tests](./spec-to-tests/SKILL.md)**: Turn a spec and the code that implements it into the project's `Tests.md`: user flows, capability matrix, failure matrix, automated vs manual mapping, failure records, and regression relations.
 - **[to-tickets](./to-tickets/SKILL.md)**: Break any plan, spec, or conversation into a set of tracer-bullet tickets, each declaring its blocking edges, whether as text in a local file or as native blocking links on a real tracker.
 - **[implement](./implement/SKILL.md)**: Build the work described by a spec or set of tickets, driving `/tdd` at pre-agreed seams and closing out with `/code-review` before committing.

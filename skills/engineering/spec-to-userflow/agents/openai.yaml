@@ -1,0 +1,5 @@
+interface:
+  display_name: "Spec To Userflow"
+  short_description: "Map the user journeys from a spec"
+policy:
+  allow_implicit_invocation: false

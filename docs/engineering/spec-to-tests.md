@@ -19,7 +19,7 @@ Reach for it when a spec or requirements document exists and you need the test s
 
 ## Prerequisites
 
-A spec or requirements document: the one [to-spec](https://aihero.dev/skills-to-spec) publishes, or any requirements the project already has. For Phase B, the implementation needs to exist. `Tests.md` is written to the project root and needs no issue tracker.
+A spec or requirements document: the one [to-spec](https://aihero.dev/skills-to-spec) publishes, or any requirements the project already has. For Phase B, the implementation needs to exist. `Tests.md` is written to the project root and needs no issue tracker. When `UserFlow.md` exists (from [spec-to-userflow](https://aihero.dev/skills-spec-to-userflow)), Layer 1 consumes it; without it, the flows are derived from the stories.
 
 ## The test matrix is the artifact
 
@@ -57,7 +57,7 @@ Both, and they are different phases. Phase A builds the matrix from the spec, so
 `spec-to-tests` is a chain step in the main build flow, and it appears twice:
 
 ```txt
-grill-with-docs → to-spec → spec-to-tests → to-tickets → implement → spec-to-tests → code-review
+grill-with-docs → to-spec → spec-to-userflow → spec-to-tests → to-tickets → implement → spec-to-tests → code-review
 ```
 
-Upstream, [to-spec](https://aihero.dev/skills-to-spec) produces the spec whose user stories become the flow layer. Downstream, [to-tickets](https://aihero.dev/skills-to-tickets) cuts the spec into tickets, and [tdd](https://aihero.dev/skills-tdd) writes the automated tests this skill mapped. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
+Upstream, [to-spec](https://aihero.dev/skills-to-spec) produces the spec, and [spec-to-userflow](https://aihero.dev/skills-spec-to-userflow) maps the journeys its flow layer consumes. Downstream, [to-tickets](https://aihero.dev/skills-to-tickets) cuts the spec into tickets, and [tdd](https://aihero.dev/skills-tdd) writes the automated tests this skill mapped. When you're unsure which skill or flow fits, [ask-matt](https://aihero.dev/skills-ask-matt) routes you.
