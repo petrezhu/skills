@@ -1,0 +1,5 @@
+interface:
+  display_name: "Spec To Tests"
+  short_description: "Build and maintain the project's test matrix"
+policy:
+  allow_implicit_invocation: false
