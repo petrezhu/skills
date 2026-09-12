@@ -1,0 +1,4 @@
+interface:
+  display_name: "CodeGraph Bootstrap"
+  short_description: "Setup CodeGraph MCP and hooks"
+  default_prompt: "Ensure CodeGraph is installed, indexed, registered with my agents, and hooked into session startup."
