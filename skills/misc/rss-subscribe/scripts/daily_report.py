@@ -32,11 +32,18 @@ except ImportError:
     # 不在输出里加标注（属未经请求的 UI 改动），缺依赖时此处静默降级。
     from xml.etree.ElementTree import fromstring as _xml_fromstring, ParseError as _UnsafeXMLError
 
+# XML 语法错误（feed 本身坏、或被截断）与恶意构造是两回事：
+# 两者都跳过该源继续出报告，绝不让一个源拖垮整份日报。
+from xml.etree.ElementTree import ParseError as _XMLSyntaxError
+
 WORKSPACE = os.environ.get("HERMES_WORKSPACE", "/root/.hermes/profiles/main/workspace")
 MANIFEST = os.path.join(WORKSPACE, "data", "subscriptions.yaml")
 
 UA = "Mozilla/5.0 (compatible; RSSHub-Detect/1.0)"
 TIMEOUT = 30
+# 播客类 feed 动辄数 MB（实测：狗熊有话说 4.2MB、知行小酒馆 5.0MB）。
+# 上限设 400KB 会把 XML 切在 CDATA 中间，导致 unclosed CDATA 而整份日报崩掉。
+FETCH_MAX = 8 * 1024 * 1024
 ITEM_TAGS = ("item", "entry")
 
 
@@ -54,6 +61,10 @@ def parse_feed(body: str, limit: int) -> list[dict]:
         root = _xml_fromstring(body)
     except _UnsafeXMLError:
         # 格式错误，或 defusedxml 拦下了 XXE / 实体膨胀攻击
+        return []
+    except _XMLSyntaxError:
+        # feed 本身 XML 就是坏的（截断、未闭合标签等）：
+        # 跳过这一个源，日报继续出，不因单源失败而整体崩溃
         return []
     out = []
     for el in root.iter():
@@ -86,7 +97,7 @@ def fetch(url: str) -> str:
     req = urllib.request.Request(url, headers=headers)
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as resp:
-            return resp.read(400_000).decode("utf-8", "replace")
+            return resp.read(FETCH_MAX).decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         if e.code == 401:
             raise RuntimeError(rsshub_auth.unauthorized_message(url)) from None
