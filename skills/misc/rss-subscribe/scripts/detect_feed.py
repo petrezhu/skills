@@ -20,7 +20,7 @@ import urllib.error
 import urllib.request
 from urllib.parse import urljoin, urlparse
 
-UA = "Mozilla/5.0 (compatible; RSSHub-Detect/1.0; +https://rsshub.petrezhu.cn)"
+UA = "Mozilla/5.0 (compatible; RSSHub-Detect/1.0; +https://rss.petrezhu.cn)"
 TIMEOUT = 12
 
 # 按出现频率排序的常见 feed 路径

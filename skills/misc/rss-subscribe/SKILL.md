@@ -35,12 +35,12 @@ python3 <skill_root>/scripts/detect_feed.py <站点URL或域名>
 
 ## Step 2：无源站查 RSSHub 路由
 
-自建实例 `https://rsshub.petrezhu.cn`（Basic Auth，见文末「凭据」）。先确认实例活着：
+自建实例 `https://rss.petrezhu.cn`（Basic Auth，见文末「凭据」）。先确认实例活着：
 
 ```bash
 CRED=$(grep -E '^(账号|密码): ' /root/.hermes/profiles/main/secrets/rsshub-basic-auth \
        | awk -F': ' '{print $2}' | paste -sd: -)
-curl -s -u "$CRED" -o /dev/null -w '%{http_code}\n' https://rsshub.petrezhu.cn/healthz   # 期望 200
+curl -s -u "$CRED" -o /dev/null -w '%{http_code}\n' https://rss.petrezhu.cn/healthz   # 期望 200
 ```
 
 **可用端点只有两个**（2026-09-27 实测）：
@@ -54,7 +54,7 @@ GET /api/routes        404   不存在！别再写这个端点
 按域名查某站支持哪些路由：
 
 ```bash
-curl -s -u "$CRED" https://rsshub.petrezhu.cn/api/radar/rules \
+curl -s -u "$CRED" https://rss.petrezhu.cn/api/radar/rules \
   | python3 -c "
 import sys, json
 d = json.load(sys.stdin)
@@ -82,11 +82,11 @@ RSSHub 的失败**只看状态码，不看 body**，错误页也是 HTML，肉�
 ```
 200  路由可用，返回真 XML/Atom     → 可入册
 404  路由不存在（NotFoundError）    → 路由名错了，回 Step 2 查规则表
-503  路由存在但执行失败            → 缺依赖，不是路由问题
+503  路由存在但执行失败            → 依赖缺失或上游风控，不是路由问题
 301  重定向                        → 路径写法需调整
 ```
 
-**503 ≠ 路由不存在。** 本实例 503 有两个成因，都要排除：
+**503 ≠ 路由不存在。** 本实例 503 有三个成因，都要排除：
 
 1. **冷启动首请求**：RSSHub 刚重启、缓存未热时，首请求会 503 或跑满 20~30s。
    重试一次即可（实测：zhihu 首次 27.8s，随后 4 次全部 0.25s）。别据此判定路由坏了。
@@ -97,7 +97,12 @@ RSSHub 的失败**只看状态码，不看 body**，错误页也是 HTML，肉�
 cd ~/RSSHub && npx patchright install chromium    # 182MB，装完重启 RSSHub 进程
 ```
 
-区分方法：看 Mac 上的 `~/rsshub.log`，503 必带具体 error 行。
+3. **上游风控**（间歇，装好依赖也会中）：站点接口把请求拦了。实测 B站
+   `bilibili/user/video`：`API 风控校验失败 -352 → 回退 browser mode → 412 → 503`。
+   同一 URL 连打三次可能是 `503 / 503 / 200`，**重试即通**；命中 RSSHub 内存缓存则稳定 200（15ms）。
+   所以判读 503 要连打 2~3 次，别一发定生死。
+
+区分方法：看 Mac 上的 `~/rsshub.log`，503 必带具体 error 行（三种成因各带不同错误）。
 
 真实路由名常与文档不同，实测过：
 `/github/issue/vuejs/core` ✓（**单数 issue**）、`/github/release/…` ✗404、`/github/commits/…` ✗404
@@ -111,7 +116,7 @@ python3 <skill_root>/scripts/subscribe.py add \
 
 # RSSHub 源
 python3 <skill_root>/scripts/subscribe.py add \
-  --name "站点名" --feed "https://rsshub.petrezhu.cn/<route>" --type rsshub
+  --name "站点名" --feed "https://rss.petrezhu.cn/<route>" --type rsshub
 ```
 
 `--name` 用中文短名，清单里要好扫。返回 `rejected` 就如实报告原因。
@@ -158,14 +163,22 @@ python3 <skill_root>/scripts/daily_report.py --feed 3 --markdown
 - 浏览器渲染路由（B站等）需要 Chromium：`cd ~/RSSHub && npx patchright install chromium`
 - 实例健康：`GET /healthz`；日志 `~/rsshub.log`（Mac 上）
 
-**当前阻塞**：`rsshub.petrezhu.cn` 尚无 DNS A 记录，域名只在本机反代可通。DNS 生效前 RSSHub 源
-无法入册（`subscribe.py` 会以 `Name or service not known` 拒收，这是预期行为，不要用绕过手段）。
+**当前状态（2026-09-27 已全通）**：`rss.petrezhu.cn` → `113.45.170.85`，三网 DNS 生效（TTL 300），
+HTTPS 已上线，RSSHub 源可正常入册。
+
+- vhost：`/www/server/panel/vhost/nginx/rss.petrezhu.cn.conf`（80 → 301 跳 https，443 反代回源
+  `http://10.8.0.10:1200`，Basic Auth）
+- 证书：Let's Encrypt ECC，装在 `/www/server/panel/vhost/cert/rss.petrezhu.cn/`，续期自动
+  `kill -HUP 1606`（reloadcmd 已配好）
+- ⚠️ nginx **不要用 `systemctl restart`**（BT Panel 自管）；改配置用 `kill -HUP 1606`。
+  注意 `/www/server/nginx/logs/nginx.pid` 是**陈旧的**（指向早已不存在的 647150），
+  一律用 `ps -eo pid,ppid,cmd | grep 'nginx: master'` 取真实 PID（当前是 1606）。
 
 ## 凭据
 
 RSSHub 实例有 Basic Auth。账号密码**不要写进对话，不要写进清单，不要进 git**。
 
-`scripts/rsshub_auth.py` 已经自动处理：探测、验证、日报在请求 `rsshub.petrezhu.cn` 时会自动带上
+`scripts/rsshub_auth.py` 已经自动处理：探测、验证、日报在请求 `rss.petrezhu.cn` 时会自动带上
 认证头，**入册 RSSHub 源时你不需要手动传任何凭据**。凭据文件：
 
 ```

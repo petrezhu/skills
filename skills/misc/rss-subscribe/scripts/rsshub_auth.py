@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """RSSHub 反代的 Basic Auth 凭据读取。
 
-只有 rsshub.petrezhu.cn 需要认证；其余原生 feed 不带任何凭据。
+只有 rss.petrezhu.cn 需要认证；其余原生 feed 不带任何凭据。
 
 凭据存本地文件，绝不写进清单、绝不进对话、绝不进 git。
 """
@@ -15,7 +15,7 @@ CRED_FILE = os.environ.get(
     "RSSHUB_CRED_FILE",
     "/root/.hermes/profiles/main/secrets/rsshub-basic-auth",
 )
-RSSHUB_HOST = "rsshub.petrezhu.cn"
+RSSHUB_HOST = "rss.petrezhu.cn"
 
 
 def _read_pair() -> tuple[str, str]:
