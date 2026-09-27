@@ -1,0 +1,3 @@
+interface:
+  display_name: "RSS Subscribe"
+  short_description: "Add a website to the RSS subscription list (native feed or RSSHub route)"
