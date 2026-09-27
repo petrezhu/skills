@@ -121,6 +121,15 @@ python3 <skill_root>/scripts/subscribe.py add \
 
 `--name` 用中文短名，清单里要好扫。返回 `rejected` 就如实报告原因。
 
+可选参数 `--group`（显式分组，覆盖自动归类）、`--filterout`（排除式正则，如
+`【公告全知道】|【早报】`），导出 OPML 时生效。例：
+
+```bash
+python3 <skill_root>/scripts/subscribe.py add \
+  --name "财联社-电报" --feed "https://rss.petrezhu.cn/cls/telegraph" --type rsshub \
+  --group "财经新闻" --filterout "【公告全知道】|【风口研报】|【早报】|研报"
+```
+
 **没有现成路由时的兜底**（按优先级）：
 1. 普通文章站 → CSS 选择器抓取可行，但会随改版静默腐烂，只适合单次取用
 2. 登录墙/重反爬站 → **不适合长期订阅**，建议单次显式抓取，别伪装成订阅
@@ -133,15 +142,19 @@ python3 <skill_root>/scripts/subscribe.py list      # 总览
 python3 <skill_root>/scripts/subscribe.py verify    # 逐个重新拉取
 ```
 
-## Step 5：手动出日报（Q3=C 阶段）
+## Step 5：导出 OPML（给各 RSS 阅读器）
+
+订阅清单是**唯一真相源**，随时导出一份 OPML 供 Feedly / NetNewsWire / Inoreader 等阅读器导入：
 
 ```bash
-python3 <skill_root>/scripts/daily_report.py --feed 3          # 纯文本
-python3 <skill_root>/scripts/daily_report.py --feed 3 --markdown
+python3 <skill_root>/scripts/subscribe.py export-opml --out ~/follows.opml
 ```
 
-当前只输出「各源最新 N 条」，**没有已读去重**（那属 monitoring，归 `blogwatcher`）。
-定时触发要等老己确认挂 cron，现在按 Q3=C 手动跑。
+- 自动按类型分组：`B站UP主 / 播客 / 财经新闻 / 政务政策 / 科技媒体 / 博客·媒体`；
+  源上用 `--group` 显式指定则有更高优先级，不受自动归类约束
+- 源上的 `filterout` 字段（排除式正则，纯文本）**只在导出时**拼进 `xmlUrl`
+  （`?filterout=<URL编码的正则>`）→ 阅读器拿到的就是过滤后的 feed，yaml 保持可读
+- 过滤规则不在脚本里硬编码：`--filterout '关键词1|关键词2'` 入册时写进清单，改规则改清单字段即可
 
 汇报格式（三行内说完）：
 
@@ -154,8 +167,8 @@ python3 <skill_root>/scripts/daily_report.py --feed 3 --markdown
 ## 文件与实例
 
 - 清单：`<workspace>/data/subscriptions.yaml`（唯一真相源，Git 可备份）
-- 脚本：`scripts/detect_feed.py`（探测）、`scripts/subscribe.py`（登记/验证）、
-  `scripts/daily_report.py`（手动日报）、`scripts/rsshub_auth.py`（凭据，自动被前两者调用）
+- 脚本：`scripts/detect_feed.py`（探测）、`scripts/subscribe.py`（登记/验证/导出 OPML）、
+  `scripts/rsshub_auth.py`（凭据，自动被前者调用）
 - 实例：mac-lab `~/RSSHub`，pnpm 原生部署（**未用 Docker**），入口 `dist/index.mjs`，端口 1200，环境
   `NODE_ENV=production CACHE_TYPE=memory CACHE_EXPIRE=300 PORT=1200`
 - **开机自启**：launchd `com.petrezhu.rsshub`（`~/Library/LaunchAgents/`，`RunAtLoad` + `KeepAlive`，
@@ -178,7 +191,7 @@ HTTPS 已上线，RSSHub 源可正常入册。
 
 RSSHub 实例有 Basic Auth。账号密码**不要写进对话，不要写进清单，不要进 git**。
 
-`scripts/rsshub_auth.py` 已经自动处理：探测、验证、日报在请求 `rss.petrezhu.cn` 时会自动带上
+`scripts/rsshub_auth.py` 已经自动处理：探测、验证在请求 `rss.petrezhu.cn` 时会自动带上
 认证头，**入册 RSSHub 源时你不需要手动传任何凭据**。凭据文件：
 
 ```

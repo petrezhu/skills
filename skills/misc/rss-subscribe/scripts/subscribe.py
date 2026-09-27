@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
-"""订阅清单管理：登记、列出、验证。
+"""订阅清单管理：登记、列出、验证、导出 OPML。
 
 用法:
-    subscribe.py add --name 名称 --feed URL [--site URL] [--type native|rsshub] [--note 备注]
+    subscribe.py add --name 名称 --feed URL [--site URL] [--type native|rsshub] [--note 备注] [--group 分组] [--filterout 正则]
     subscribe.py list [--json]
     subscribe.py verify [--limit N] [--name 名称]
+    subscribe.py export-opml [--out follows.opml]
 
 清单: <workspace>/data/subscriptions.yaml
+
+分组与过滤存放（对齐决策 Q1=A / Q2=A）:
+    - group 字段存显式分组; 为空时 export-opml 按 feed/name 自动归类
+    - filterout 字段存排除式正则(纯文本, 与 feed URL 分离); 导出 OPML 时才拼到 xmlUrl
+      → 阅读器直接拿到过滤后的 feed, yaml 保持可读
 """
 from __future__ import annotations
 
@@ -18,6 +24,8 @@ import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
+from html import escape as _xml_escape
+from urllib.parse import quote as _url_quote
 
 import rsshub_auth
 from detect_feed import FEED_MARKERS, NOT_FEED_MARKERS  # 标记只此一份, 与探测脚本同源
@@ -73,7 +81,7 @@ def save(items: list[dict]) -> None:
     ]
     for it in items:
         lines.append(f'  - name: "{it.get("name", "")}"')
-        for k in ("type", "feed", "site", "note", "added", "last_check", "item_count"):
+        for k in ("group", "type", "feed", "filterout", "site", "note", "added", "last_check", "item_count"):
             if it.get(k) not in (None, ""):
                 lines.append(f'    {k}: "{it[k]}"')
     with open(MANIFEST, "w", encoding="utf-8") as f:
@@ -122,8 +130,10 @@ def cmd_add(a) -> int:
         return 1
     items.append({
         "name": a.name,
+        "group": a.group or "",
         "type": a.type,
         "feed": feed,
+        "filterout": a.filterout or "",
         "site": a.site or "",
         "note": a.note or "",
         "added": datetime.now(timezone.utc).astimezone().strftime("%Y-%m-%d %H:%M"),
@@ -186,6 +196,79 @@ def cmd_verify(a) -> int:
     return 0 if all(x["ok"] for x in results) else 1
 
 
+def classify(it: dict) -> str:
+    """OPML 分组：显式 group 优先，否则按 feed 特征自动归类（Q1=A）。"""
+    if it.get("group"):
+        return it["group"]
+    feed = (it.get("feed") or "").lower()
+    if "/bilibili/" in feed:
+        return "B站UP主"
+    if "xyzfm" in feed or "ximalaya" in feed or "redcircle" in feed:
+        return "播客"
+    if "/cls/" in feed or "xhsxw" in feed or "/news/" in feed:
+        return "财经新闻"
+    if "miit.gov.cn" in feed or "/gov/" in feed:
+        return "政务政策"
+    if "geekpark" in feed or "sspai" in feed or "mittrchina" in feed:
+        return "科技媒体"
+    return "博客·媒体"
+
+
+def _opml_xmlurl(it: dict) -> str:
+    """feed URL + filterout 拼接；filterout 只在导出时拼进 xmlUrl（Q2=A）。"""
+    feed = it.get("feed") or ""
+    fout = (it.get("filterout") or "").strip()
+    if not fout:
+        return feed
+    sep = "&" if "?" in feed else "?"
+    return f"{feed}{sep}filterout={_url_quote(fout, safe='')}"
+
+
+def cmd_export_opml(a) -> int:
+    """导出 OPML。按 classify() 分组，xmlUrl 内嵌 filterout → 阅读器直接拿到过滤后的 feed。"""
+    items = load()
+    if not items:
+        print("(清单为空，无可导出)")
+        return 1
+
+    grouped: dict[str, list[dict]] = {}
+    for it in items:
+        grouped.setdefault(classify(it), []).append(it)
+
+    # 固定分组顺序，保证导出稳定
+    order = ["B站UP主", "播客", "财经新闻", "政务政策", "科技媒体", "博客·媒体"]
+    keys = [k for k in order if k in grouped] + [k for k in grouped if k not in order]
+
+    lines = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<opml version="1.0">',
+        "  <head>",
+        "    <title>我的关注</title>",
+        f"    <dateCreated>{datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds')}</dateCreated>",
+        "  </head>",
+        "  <body>",
+    ]
+    for k in keys:
+        lines.append(f'    <outline text="{_xml_escape(k)}" title="{_xml_escape(k)}">')
+        for it in grouped[k]:
+            name = _xml_escape(it.get("name") or "")
+            xmlurl = _xml_escape(_opml_xmlurl(it))
+            lines.append(f'      <outline type="rss" text="{name}" title="{name}" xmlUrl="{xmlurl}"/>')
+        lines.append("    </outline>")
+    lines.append("  </body>")
+    lines.append("</opml>")
+
+    out = a.out or "follows.opml"
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    n_feeds = sum(len(v) for v in grouped.values())
+    n_groups = len(keys)
+    print(json.dumps({"status": "ok", "out": out, "feeds": n_feeds,
+                      "groups": keys},
+                     ensure_ascii=False, indent=2))
+    return 0
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -196,6 +279,8 @@ def main() -> int:
     pa.add_argument("--site", default="")
     pa.add_argument("--type", default="native", choices=["native", "rsshub"])
     pa.add_argument("--note", default="")
+    pa.add_argument("--group", default="", help="显式分组；为空则导出 OPML 时自动归类")
+    pa.add_argument("--filterout", default="", help="排除式正则(纯文本)，导出 OPML 时拼进 xmlUrl")
     pa.set_defaults(func=cmd_add)
 
     pl = sub.add_parser("list")
@@ -206,6 +291,10 @@ def main() -> int:
     pv.add_argument("--limit", type=int, default=0)
     pv.add_argument("--name", default="")
     pv.set_defaults(func=cmd_verify)
+
+    pe = sub.add_parser("export-opml")
+    pe.add_argument("--out", default="follows.opml")
+    pe.set_defaults(func=cmd_export_opml)
 
     a = p.parse_args()
     return a.func(a)

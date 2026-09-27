@@ -52,10 +52,8 @@ def missing() -> bool:
 
 def unauthorized_message(url: str) -> str:
     """401 时的可读说明。凭据缺失要指路，凭据错误要区分，两者都不可只报数字码。
-
-    两个调用方（subscribe 返回 dict、daily_report 抛异常）只是错误出口不同，
-    说明文案必须一致，所以收在这里。
-    """
+      说明文案必须一致，所以收在这里。
+      """
     if not (RSSHUB_HOST in url):
         return "HTTP 401 unauthorized"
     hint = f"凭据缺失: {CRED_FILE}" if missing() else "凭据错误"
