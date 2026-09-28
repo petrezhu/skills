@@ -201,6 +201,10 @@ def classify(it: dict) -> str:
     if it.get("group"):
         return it["group"]
     feed = (it.get("feed") or "").lower()
+    if "/flow/" in feed:
+        return "无限流"
+    if "evening-report" in feed:
+        return "日报"
     if "/bilibili/" in feed:
         return "B站UP主"
     if "xyzfm" in feed or "ximalaya" in feed or "redcircle" in feed:
@@ -236,7 +240,7 @@ def cmd_export_opml(a) -> int:
         grouped.setdefault(classify(it), []).append(it)
 
     # 固定分组顺序，保证导出稳定
-    order = ["B站UP主", "播客", "财经新闻", "政务政策", "科技媒体", "博客·媒体"]
+    order = ["日报", "无限流", "B站UP主", "播客", "财经新闻", "政务政策", "科技媒体", "博客·媒体"]
     keys = [k for k in order if k in grouped] + [k for k in grouped if k not in order]
 
     lines = [
