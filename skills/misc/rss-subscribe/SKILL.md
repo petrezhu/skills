@@ -147,10 +147,15 @@ python3 <skill_root>/scripts/subscribe.py verify    # 逐个重新拉取
 订阅清单是**唯一真相源**，随时导出一份 OPML 供 Feedly / NetNewsWire / Inoreader 等阅读器导入：
 
 ```bash
-python3 <skill_root>/scripts/subscribe.py export-opml --out ~/follows.opml
+# 给阅读器用：内嵌 Basic Auth 凭据（只有 rss.petrezhu.cn 的源需要）
+python3 <skill_root>/scripts/subscribe.py export-opml --out ~/follows.opml --embed-cred "petre:123"
 ```
 
-- 自动按类型分组：`B站UP主 / 播客 / 财经新闻 / 政务政策 / 科技媒体 / 博客·媒体`；
+**⚠️ 不带 `--embed-cred` 导出 → 阅读器导入后大量 401**：`rss.petrezhu.cn` 的 feed 全部有
+Basic Auth，纯 URL 的 xmlUrl 会被阅读器拒；`--embed-cred` 只对这些源内嵌 `user:pass@`，
+原生源（如 sspai.com / miit.gov.cn）不嵌、不受影响。清单本体仍不存凭据（凭据只在导出时拼进 OPML）。
+
+- 自动按类型分组：`日报 / 无限流 / B站UP主 / 播客 / 财经新闻 / 政务政策 / 科技媒体 / 博客·媒体`；
   源上用 `--group` 显式指定则有更高优先级，不受自动归类约束
 - 源上的 `filterout` 字段（排除式正则，纯文本）**只在导出时**拼进 `xmlUrl`
   （`?filterout=<URL编码的正则>`）→ 阅读器拿到的就是过滤后的 feed，yaml 保持可读
