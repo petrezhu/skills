@@ -25,7 +25,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime, timezone
 from html import escape as _xml_escape
-from urllib.parse import quote as _url_quote
+from urllib.parse import quote as _url_quote, urlsplit as _urlsplit
 
 import rsshub_auth
 from detect_feed import FEED_MARKERS, NOT_FEED_MARKERS  # 标记只此一份, 与探测脚本同源
@@ -218,14 +218,22 @@ def classify(it: dict) -> str:
     return "博客·媒体"
 
 
-def _opml_xmlurl(it: dict) -> str:
-    """feed URL + filterout 拼接；filterout 只在导出时拼进 xmlUrl（Q2=A）。"""
+def _opml_xmlurl(it: dict, cred: str = "") -> str:
+    """feed URL + filterout 拼接；filterout 只在导出时拼进 xmlUrl（Q2=A）。
+
+    cred 为 "user:pass" 时，仅对 rss.petrezhu.cn 的 feed 内嵌 Basic Auth 凭据，
+    其余原生源（少数派/工信部等）无需凭据，保持原样。
+    """
     feed = it.get("feed") or ""
     fout = (it.get("filterout") or "").strip()
-    if not fout:
-        return feed
-    sep = "&" if "?" in feed else "?"
-    return f"{feed}{sep}filterout={_url_quote(fout, safe='')}"
+    url = feed
+    if fout:
+        sep = "&" if "?" in feed else "?"
+        url = f"{feed}{sep}filterout={_url_quote(fout, safe='')}"
+    if cred and "rss.petrezhu.cn" in url:
+        p = _urlsplit(url)
+        url = f"{p.scheme}://{cred}@{url.split('://', 1)[1]}"
+    return url
 
 
 def cmd_export_opml(a) -> int:
@@ -256,7 +264,7 @@ def cmd_export_opml(a) -> int:
         lines.append(f'    <outline text="{_xml_escape(k)}" title="{_xml_escape(k)}">')
         for it in grouped[k]:
             name = _xml_escape(it.get("name") or "")
-            xmlurl = _xml_escape(_opml_xmlurl(it))
+            xmlurl = _xml_escape(_opml_xmlurl(it, getattr(a, "embed_cred", "")))
             lines.append(f'      <outline type="rss" text="{name}" title="{name}" xmlUrl="{xmlurl}"/>')
         lines.append("    </outline>")
     lines.append("  </body>")
@@ -298,6 +306,8 @@ def main() -> int:
 
     pe = sub.add_parser("export-opml")
     pe.add_argument("--out", default="follows.opml")
+    pe.add_argument("--embed-cred", default="",
+                    help='给 rss.petrezhu.cn 的 feed 内嵌 "user:pass" Basic Auth 凭据(仅这些源)')
     pe.set_defaults(func=cmd_export_opml)
 
     a = p.parse_args()
