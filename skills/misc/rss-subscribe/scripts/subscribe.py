@@ -248,7 +248,7 @@ def cmd_export_opml(a) -> int:
         grouped.setdefault(classify(it), []).append(it)
 
     # 固定分组顺序，保证导出稳定
-    order = ["日报", "无限流", "B站UP主", "播客", "财经新闻", "政务政策", "科技媒体", "博客·媒体"]
+    order = ["日报", "无限流", "B站UP主", "播客", "财经新闻", "政务政策", "科技媒体", "BIM 权威信源", "博客·媒体"]
     keys = [k for k in order if k in grouped] + [k for k in grouped if k not in order]
 
     lines = [
